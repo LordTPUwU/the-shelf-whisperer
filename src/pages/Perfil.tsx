@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useObras } from "@/contexts/ObrasContext";
-import { Edit2, Save, Trash2, Camera } from "lucide-react";
+import { Edit2, Save, Trash2, Camera, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -21,7 +22,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const Perfil = () => {
-  const { usuario, obras, atualizarPerfil, limparDados } = useObras();
+  const navigate = useNavigate();
+  const { usuario, obras, atualizarPerfil, limparDados, logout } = useObras();
   const [editando, setEditando] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -61,6 +63,12 @@ const Perfil = () => {
     toast.success("Todos os dados foram removidos");
   };
 
+  const handleLogout = () => {
+    logout();
+    toast.success("Você saiu da sua conta");
+    navigate("/");
+  };
+
   const iniciais = usuario.nome
     .split(" ")
     .map((n) => n[0])
@@ -80,34 +88,40 @@ const Perfil = () => {
         <Card className="card-gradient">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Informações Pessoais</CardTitle>
-            {!editando ? (
-              <Button onClick={() => setEditando(true)} variant="outline" size="sm">
-                <Edit2 className="h-4 w-4 mr-2" />
-                Editar
+            <div className="flex gap-2">
+              <Button onClick={handleLogout} variant="outline" size="sm">
+                <LogOut className="h-4 w-4 mr-2" />
+                Sair
               </Button>
-            ) : (
-              <div className="flex gap-2">
-                <Button onClick={handleSave} size="sm">
-                  <Save className="h-4 w-4 mr-2" />
-                  Salvar
+              {!editando ? (
+                <Button onClick={() => setEditando(true)} variant="outline" size="sm">
+                  <Edit2 className="h-4 w-4 mr-2" />
+                  Editar
                 </Button>
-                <Button
-                  onClick={() => {
-                    setEditando(false);
-                setFormData({
-                  nome: usuario.nome,
-                  email: usuario.email,
-                  bio: usuario.bio || "",
-                  imagem: usuario.imagem || "",
-                });
-                  }}
-                  variant="outline"
-                  size="sm"
-                >
-                  Cancelar
-                </Button>
-              </div>
-            )}
+              ) : (
+                <>
+                  <Button onClick={handleSave} size="sm">
+                    <Save className="h-4 w-4 mr-2" />
+                    Salvar
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setEditando(false);
+                  setFormData({
+                    nome: usuario.nome,
+                    email: usuario.email,
+                    bio: usuario.bio || "",
+                    imagem: usuario.imagem || "",
+                  });
+                    }}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Cancelar
+                  </Button>
+                </>
+              )}
+            </div>
           </CardHeader>
 
           <CardContent className="space-y-6">
