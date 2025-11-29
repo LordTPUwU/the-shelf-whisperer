@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useObras } from "@/contexts/ObrasContext";
 import { Edit2, Save, Trash2, User } from "lucide-react";
 import { toast } from "sonner";
@@ -28,6 +28,7 @@ const Perfil = () => {
     nome: usuario.nome,
     email: usuario.email,
     bio: usuario.bio || "",
+    imagem: usuario.imagem || "",
   });
 
   const handleSave = () => {
@@ -75,11 +76,12 @@ const Perfil = () => {
                 <Button
                   onClick={() => {
                     setEditando(false);
-                    setFormData({
-                      nome: usuario.nome,
-                      email: usuario.email,
-                      bio: usuario.bio || "",
-                    });
+                setFormData({
+                  nome: usuario.nome,
+                  email: usuario.email,
+                  bio: usuario.bio || "",
+                  imagem: usuario.imagem || "",
+                });
                   }}
                   variant="outline"
                   size="sm"
@@ -93,6 +95,7 @@ const Perfil = () => {
           <CardContent className="space-y-6">
             <div className="flex flex-col items-center">
               <Avatar className="h-32 w-32 mb-4">
+                {usuario.imagem && <AvatarImage src={usuario.imagem} alt={usuario.nome} />}
                 <AvatarFallback className="text-4xl bg-primary/20 text-primary">
                   {iniciais}
                 </AvatarFallback>
@@ -139,6 +142,17 @@ const Perfil = () => {
                     onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                     placeholder="Conte um pouco sobre você e seus gostos..."
                     rows={3}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="imagem">Foto de Perfil (URL)</Label>
+                  <Input
+                    id="imagem"
+                    type="url"
+                    value={formData.imagem}
+                    onChange={(e) => setFormData({ ...formData, imagem: e.target.value })}
+                    placeholder="https://exemplo.com/sua-foto.jpg"
                   />
                 </div>
               </div>
