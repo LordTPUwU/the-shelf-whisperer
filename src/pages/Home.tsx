@@ -1,8 +1,18 @@
-import { Link } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { BookHeart, Sparkles, Heart, Users, TrendingUp } from "lucide-react";
+import { useObras } from "@/contexts/ObrasContext";
 
 const Home = () => {
+  const navigate = useNavigate();
+  const { estaAutenticado } = useObras();
+
+  useEffect(() => {
+    if (estaAutenticado) {
+      navigate("/biblioteca");
+    }
+  }, [estaAutenticado, navigate]);
   const features = [
     {
       icon: BookHeart,
@@ -50,15 +60,10 @@ const Home = () => {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
-              <Link to="/biblioteca">
+              <Link to="/auth">
                 <Button size="lg" className="text-lg px-8">
                   <Sparkles className="h-5 w-5 mr-2" />
                   Começar Agora
-                </Button>
-              </Link>
-              <Link to="/explorar">
-                <Button size="lg" variant="outline" className="text-lg px-8">
-                  Explorar Obras
                 </Button>
               </Link>
             </div>
@@ -98,7 +103,7 @@ const Home = () => {
             Crie sua biblioteca pessoal e nunca mais esqueça aquela obra incrível que
             alguém te recomendou
           </p>
-          <Link to="/biblioteca">
+          <Link to="/auth">
             <Button size="lg" className="text-lg px-8 mt-4">
               Criar Minha Biblioteca
             </Button>
