@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useObras } from "@/contexts/ObrasContext";
-import { Edit2, Save, Trash2, User } from "lucide-react";
+import { Edit2, Save, Trash2, Camera } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -24,12 +24,30 @@ const Perfil = () => {
   const { usuario, obras, atualizarPerfil, limparDados } = useObras();
   const [editando, setEditando] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     nome: usuario.nome,
     email: usuario.email,
     bio: usuario.bio || "",
     imagem: usuario.imagem || "",
   });
+
+  const handleImageClick = () => {
+    if (editando) {
+      fileInputRef.current?.click();
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, imagem: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSave = () => {
     atualizarPerfil(formData);
@@ -94,12 +112,32 @@ const Perfil = () => {
 
           <CardContent className="space-y-6">
             <div className="flex flex-col items-center">
-              <Avatar className="h-32 w-32 mb-4">
-                {usuario.imagem && <AvatarImage src={usuario.imagem} alt={usuario.nome} />}
-                <AvatarFallback className="text-4xl bg-primary/20 text-primary">
-                  {iniciais}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative group">
+                <Avatar 
+                  className={`h-32 w-32 mb-4 ${editando ? 'cursor-pointer ring-2 ring-primary/50 hover:ring-primary transition-all' : ''}`}
+                  onClick={handleImageClick}
+                >
+                  {formData.imagem && <AvatarImage src={formData.imagem} alt={usuario.nome} />}
+                  <AvatarFallback className="text-4xl bg-primary/20 text-primary">
+                    {iniciais}
+                  </AvatarFallback>
+                </Avatar>
+                {editando && (
+                  <div 
+                    className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer mb-4"
+                    onClick={handleImageClick}
+                  >
+                    <Camera className="h-8 w-8 text-white" />
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </div>
               {!editando && (
                 <div className="text-center">
                   <h2 className="text-2xl font-bold mb-1">{usuario.nome}</h2>
@@ -146,7 +184,7 @@ const Perfil = () => {
                 </div>
 
                 <div>
-                  <Label htmlFor="imagem">Foto de Perfil (URL)</Label>
+                  <Label htmlFor="imagem">Foto de Perfil (URL) - Opcional</Label>
                   <Input
                     id="imagem"
                     type="url"
@@ -154,6 +192,9 @@ const Perfil = () => {
                     onChange={(e) => setFormData({ ...formData, imagem: e.target.value })}
                     placeholder="https://exemplo.com/sua-foto.jpg"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Ou clique na foto acima para fazer upload
+                  </p>
                 </div>
               </div>
             )}
