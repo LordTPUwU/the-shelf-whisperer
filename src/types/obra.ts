@@ -18,6 +18,7 @@ export type Genero =
 
 export interface Obra {
   id: string;
+  apiId?: string; // ID da obra na API externa
   nome: string;
   tipo: TipoObra;
   genero: Genero;
@@ -26,6 +27,8 @@ export interface Obra {
   curtida: boolean;
   desejos: boolean;
   dataCriacao: string;
+  dataLancamento?: string;
+  avaliacao?: number;
 }
 
 export interface Usuario {
