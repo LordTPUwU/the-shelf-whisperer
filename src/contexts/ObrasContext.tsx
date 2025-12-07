@@ -64,6 +64,11 @@ export const ObrasProvider = ({ children }: { children: ReactNode }) => {
   }, [usuario, estaAutenticado]);
 
   const adicionarObra = (obraData: Omit<Obra, "id" | "dataCriacao">) => {
+    // Verificar se obra já existe (pelo apiId e tipo)
+    if (obraData.apiId && usuario?.obras.some(o => o.apiId === obraData.apiId && o.tipo === obraData.tipo)) {
+      return; // Não adicionar duplicata
+    }
+    
     const novaObra: Obra = {
       ...obraData,
       id: `obra-${Date.now()}`,
