@@ -1,19 +1,21 @@
-import { useState, useEffect } from "react";
-import { Search, Plus, Loader2, BookOpen, Film, Tv, TrendingUp, Star, Calendar, Check } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Search, BookOpen, Film, Tv, TrendingUp, Loader2, Star, Calendar, Plus, Check } from "lucide-react";
 import { useObras } from "@/contexts/ObrasContext";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { TipoObra } from "@/types/obra";
 
-const TMDB_API_KEY = "2f7d7d8f5c5d1c8e9b0a3f4e6d7c8b9a"; // Demo key - users should replace with their own
+const TMDB_API_KEY = "2f7d7d8f5c5d1c8e9b0a3f4e6d7c8b9a";
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500";
 
+// ============================================
+// TIPOS
+// ============================================
 interface MediaResult {
   id: string;
   apiId: string;
@@ -23,8 +25,203 @@ interface MediaResult {
   image?: string;
   releaseDate?: string;
   rating?: number;
-  genres?: string[];
+  genres?: (string | number)[];
 }
+
+// ============================================
+// FUNÇÕES DE CRIAÇÃO DOM (JavaScript Puro)
+// Demonstra manipulação direta do DOM
+// ============================================
+
+/**
+ * Cria elemento de imagem do card
+ * Usa document.createElement e atributos
+ */
+const criarImagemCard = (src: string | undefined, alt: string): HTMLDivElement => {
+  const container = document.createElement("div");
+  container.className = "h-56 overflow-hidden";
+  
+  if (src) {
+    const img = document.createElement("img");
+    img.src = src;
+    img.alt = alt;
+    img.className = "w-full h-full object-cover";
+    img.onerror = () => {
+      img.src = "https://via.placeholder.com/280x180?text=Sem+Imagem";
+    };
+    container.appendChild(img);
+  } else {
+    container.className = "h-56 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center";
+    const span = document.createElement("span");
+    span.textContent = "🎬";
+    span.className = "text-4xl";
+    container.appendChild(span);
+  }
+  
+  return container;
+};
+
+/**
+ * Cria título do card usando textContent
+ */
+const criarTituloCard = (titulo: string): HTMLHeadingElement => {
+  const h3 = document.createElement("h3");
+  h3.className = "font-semibold text-lg line-clamp-2 text-foreground";
+  h3.textContent = titulo;
+  return h3;
+};
+
+/**
+ * Cria seção de info (data e avaliação)
+ * Usa appendChild para adicionar elementos filhos
+ */
+const criarInfoCard = (releaseDate?: string, rating?: number): HTMLDivElement => {
+  const div = document.createElement("div");
+  div.className = "flex items-center gap-3 text-sm text-muted-foreground";
+  
+  if (releaseDate) {
+    const spanData = document.createElement("span");
+    spanData.className = "flex items-center gap-1";
+    spanData.innerHTML = `<span class="text-xs">📅</span> ${releaseDate.substring(0, 4)}`;
+    div.appendChild(spanData);
+  }
+  
+  if (rating !== undefined && rating > 0) {
+    const spanRating = document.createElement("span");
+    spanRating.className = "flex items-center gap-1";
+    spanRating.innerHTML = `<span class="text-yellow-500">⭐</span> ${rating.toFixed(1)}`;
+    div.appendChild(spanRating);
+  }
+  
+  return div;
+};
+
+/**
+ * Cria descrição do card
+ */
+const criarDescricaoCard = (descricao?: string): HTMLParagraphElement => {
+  const p = document.createElement("p");
+  p.className = "text-sm text-muted-foreground line-clamp-3";
+  p.textContent = descricao || "Sem descrição disponível";
+  return p;
+};
+
+/**
+ * Cria container do conteúdo do card
+ */
+const criarConteudoCard = (media: MediaResult): HTMLDivElement => {
+  const content = document.createElement("div");
+  content.className = "flex-1 pt-4 px-4 space-y-2";
+  
+  content.appendChild(criarTituloCard(media.title));
+  content.appendChild(criarInfoCard(media.releaseDate, media.rating));
+  content.appendChild(criarDescricaoCard(media.description));
+  
+  return content;
+};
+
+/**
+ * Cria botões de ação com addEventListener
+ * Usa arrow functions conforme requisito acadêmico
+ */
+const criarBotoesCard = (
+  media: MediaResult,
+  jaAdicionada: boolean,
+  onAdicionar: (media: MediaResult, comCurtida: boolean) => void
+): HTMLDivElement => {
+  const footer = document.createElement("div");
+  footer.className = "pt-4 px-4 pb-4 border-t border-border flex gap-2";
+  
+  if (jaAdicionada) {
+    const btnDisabled = document.createElement("button");
+    btnDisabled.className = "flex-1 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-secondary text-secondary-foreground opacity-50 cursor-not-allowed";
+    btnDisabled.disabled = true;
+    btnDisabled.innerHTML = `<span class="mr-2">✓</span> Já na biblioteca`;
+    footer.appendChild(btnDisabled);
+  } else {
+    // Botão Lista
+    const btnLista = document.createElement("button");
+    btnLista.className = "flex-1 inline-flex items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground px-4 py-2 text-sm font-medium transition-colors";
+    btnLista.innerHTML = `<span class="mr-1">+</span> Lista`;
+    
+    // addEventListener com arrow function
+    btnLista.addEventListener("click", () => {
+      onAdicionar(media, false);
+    });
+    
+    // Botão Curtir
+    const btnCurtir = document.createElement("button");
+    btnCurtir.className = "flex-1 inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 text-sm font-medium transition-colors";
+    btnCurtir.innerHTML = `<span class="mr-1">⭐</span> Curtir`;
+    
+    // addEventListener com arrow function
+    btnCurtir.addEventListener("click", () => {
+      onAdicionar(media, true);
+    });
+    
+    footer.appendChild(btnLista);
+    footer.appendChild(btnCurtir);
+  }
+  
+  return footer;
+};
+
+/**
+ * Cria card completo usando apenas DOM APIs
+ * document.createElement, appendChild, className, textContent
+ */
+const criarCardObra = (
+  media: MediaResult,
+  jaAdicionada: boolean,
+  onAdicionar: (media: MediaResult, comCurtida: boolean) => void
+): HTMLDivElement => {
+  const card = document.createElement("div");
+  card.className = "rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden flex flex-col card-gradient";
+  card.dataset.id = media.id;
+  card.dataset.type = media.type;
+  
+  // Adiciona elementos usando appendChild
+  card.appendChild(criarImagemCard(media.image, media.title));
+  card.appendChild(criarConteudoCard(media));
+  card.appendChild(criarBotoesCard(media, jaAdicionada, onAdicionar));
+  
+  return card;
+};
+
+/**
+ * Renderiza lista de obras no container
+ * Limpa e re-renderiza todo o conteúdo
+ */
+const renderizarListaObras = (
+  container: HTMLElement,
+  obras: MediaResult[],
+  obrasUsuario: { apiId?: string; tipo: TipoObra }[],
+  onAdicionar: (media: MediaResult, comCurtida: boolean) => void
+): void => {
+  // Limpa o container (innerHTML = "")
+  container.innerHTML = "";
+  
+  if (obras.length === 0) {
+    const mensagem = document.createElement("p");
+    mensagem.className = "text-center text-muted-foreground py-12 col-span-full";
+    mensagem.textContent = "Nenhum resultado encontrado";
+    container.appendChild(mensagem);
+    return;
+  }
+  
+  // Cria e adiciona cada card
+  obras.forEach((obra) => {
+    const jaAdicionada = obrasUsuario.some(
+      (o) => o.apiId === obra.apiId && o.tipo === obra.type
+    );
+    const card = criarCardObra(obra, jaAdicionada, onAdicionar);
+    container.appendChild(card);
+  });
+};
+
+// ============================================
+// COMPONENTE REACT (integração)
+// ============================================
 
 const Explorar = () => {
   const { adicionarObra, obras } = useObras();
@@ -35,136 +232,13 @@ const Explorar = () => {
   const [loadingTrending, setLoadingTrending] = useState(true);
   const [searched, setSearched] = useState(false);
   const [activeTab, setActiveTab] = useState<"filme" | "serie" | "livro">("filme");
+  
+  // Refs para containers DOM (JavaScript puro)
+  const resultadosContainerRef = useRef<HTMLDivElement>(null);
+  const tendenciasContainerRef = useRef<HTMLDivElement>(null);
 
-  // Verificar se obra já está na biblioteca
-  const obraJaAdicionada = (apiId: string, tipo: TipoObra) => {
-    return obras.some(obra => obra.apiId === apiId && obra.tipo === tipo);
-  };
-
-  // Buscar tendências ao carregar
-  useEffect(() => {
-    carregarTendencias();
-  }, [activeTab]);
-
-  const carregarTendencias = async () => {
-    setLoadingTrending(true);
-    try {
-      if (activeTab === "livro") {
-        // Google Books - buscar livros populares
-        const response = await fetch(
-          `https://www.googleapis.com/books/v1/volumes?q=subject:fiction&orderBy=relevance&maxResults=12&langRestrict=pt`
-        );
-        const data = await response.json();
-        
-        if (data.items) {
-          setTendencias(data.items.map((item: any) => ({
-            id: item.id,
-            apiId: item.id,
-            title: item.volumeInfo.title,
-            type: "livro" as TipoObra,
-            description: item.volumeInfo.description,
-            image: item.volumeInfo.imageLinks?.thumbnail?.replace("http:", "https:"),
-            releaseDate: item.volumeInfo.publishedDate,
-            rating: item.volumeInfo.averageRating,
-            genres: item.volumeInfo.categories,
-          })));
-        }
-      } else {
-        // TMDB - filmes ou séries
-        const endpoint = activeTab === "filme" ? "movie" : "tv";
-        const response = await fetch(
-          `${TMDB_BASE_URL}/trending/${endpoint}/week?api_key=${TMDB_API_KEY}&language=pt-BR`
-        );
-        const data = await response.json();
-        
-        if (data.results) {
-          setTendencias(data.results.slice(0, 12).map((item: any) => ({
-            id: item.id.toString(),
-            apiId: item.id.toString(),
-            title: item.title || item.name,
-            type: activeTab,
-            description: item.overview,
-            image: item.poster_path ? `${TMDB_IMAGE_BASE}${item.poster_path}` : undefined,
-            releaseDate: item.release_date || item.first_air_date,
-            rating: item.vote_average,
-            genres: item.genre_ids,
-          })));
-        }
-      }
-    } catch (error) {
-      console.error("Erro ao carregar tendências:", error);
-      toast.error("Erro ao carregar tendências");
-    } finally {
-      setLoadingTrending(false);
-    }
-  };
-
-  const buscarObras = async () => {
-    if (!busca.trim()) {
-      toast.error("Digite algo para buscar");
-      return;
-    }
-
-    setLoading(true);
-    setSearched(true);
-    try {
-      if (activeTab === "livro") {
-        // Google Books API
-        const response = await fetch(
-          `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(busca)}&maxResults=20&langRestrict=pt`
-        );
-        const data = await response.json();
-
-        if (data.items) {
-          setResultados(data.items.map((item: any) => ({
-            id: item.id,
-            apiId: item.id,
-            title: item.volumeInfo.title,
-            type: "livro" as TipoObra,
-            description: item.volumeInfo.description,
-            image: item.volumeInfo.imageLinks?.thumbnail?.replace("http:", "https:"),
-            releaseDate: item.volumeInfo.publishedDate,
-            rating: item.volumeInfo.averageRating,
-            genres: item.volumeInfo.categories,
-          })));
-        } else {
-          setResultados([]);
-          toast.info("Nenhum resultado encontrado");
-        }
-      } else {
-        // TMDB API - filmes ou séries
-        const endpoint = activeTab === "filme" ? "movie" : "tv";
-        const response = await fetch(
-          `${TMDB_BASE_URL}/search/${endpoint}?api_key=${TMDB_API_KEY}&language=pt-BR&query=${encodeURIComponent(busca)}`
-        );
-        const data = await response.json();
-
-        if (data.results && data.results.length > 0) {
-          setResultados(data.results.map((item: any) => ({
-            id: item.id.toString(),
-            apiId: item.id.toString(),
-            title: item.title || item.name,
-            type: activeTab,
-            description: item.overview,
-            image: item.poster_path ? `${TMDB_IMAGE_BASE}${item.poster_path}` : undefined,
-            releaseDate: item.release_date || item.first_air_date,
-            rating: item.vote_average,
-            genres: item.genre_ids,
-          })));
-        } else {
-          setResultados([]);
-          toast.info("Nenhum resultado encontrado");
-        }
-      }
-    } catch (error) {
-      toast.error("Erro ao buscar. Tente novamente.");
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const adicionarNaBiblioteca = (media: MediaResult, comCurtida: boolean = false) => {
+  // Função para adicionar à biblioteca
+  const adicionarNaBiblioteca = useCallback((media: MediaResult, comCurtida: boolean = false) => {
     const generoMap: Record<number, string> = {
       28: "Ação", 12: "Aventura", 16: "Fantasia", 35: "Comédia",
       80: "Mistério", 99: "Documentário", 18: "Drama", 10751: "Romance",
@@ -197,27 +271,172 @@ const Explorar = () => {
     
     const tipoNome = media.type === "filme" ? "Filme" : media.type === "serie" ? "Série" : "Livro";
     toast.success(`${tipoNome} "${media.title}" adicionado à sua biblioteca!`);
+  }, [adicionarObra]);
+
+  // Carregar tendências
+  useEffect(() => {
+    const carregarTendencias = async () => {
+      setLoadingTrending(true);
+      try {
+        if (activeTab === "livro") {
+          const response = await fetch(
+            `https://www.googleapis.com/books/v1/volumes?q=subject:fiction&orderBy=relevance&maxResults=12&langRestrict=pt`
+          );
+          const data = await response.json();
+          
+          if (data.items) {
+            setTendencias(data.items.map((item: any) => ({
+              id: item.id,
+              apiId: item.id,
+              title: item.volumeInfo.title,
+              type: "livro" as TipoObra,
+              description: item.volumeInfo.description,
+              image: item.volumeInfo.imageLinks?.thumbnail?.replace("http:", "https:"),
+              releaseDate: item.volumeInfo.publishedDate,
+              rating: item.volumeInfo.averageRating,
+              genres: item.volumeInfo.categories,
+            })));
+          }
+        } else {
+          const endpoint = activeTab === "filme" ? "movie" : "tv";
+          const response = await fetch(
+            `${TMDB_BASE_URL}/trending/${endpoint}/week?api_key=${TMDB_API_KEY}&language=pt-BR`
+          );
+          const data = await response.json();
+          
+          if (data.results) {
+            setTendencias(data.results.slice(0, 12).map((item: any) => ({
+              id: item.id.toString(),
+              apiId: item.id.toString(),
+              title: item.title || item.name,
+              type: activeTab,
+              description: item.overview,
+              image: item.poster_path ? `${TMDB_IMAGE_BASE}${item.poster_path}` : undefined,
+              releaseDate: item.release_date || item.first_air_date,
+              rating: item.vote_average,
+              genres: item.genre_ids,
+            })));
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao carregar tendências:", error);
+        toast.error("Erro ao carregar tendências");
+      } finally {
+        setLoadingTrending(false);
+      }
+    };
+
+    carregarTendencias();
+  }, [activeTab]);
+
+  // ============================================
+  // RENDERIZAÇÃO DOM PURA (filmes/séries)
+  // Atualiza o DOM quando dados mudam
+  // ============================================
+  useEffect(() => {
+    if (activeTab === "livro") return; // Livros usam React
+    
+    if (resultadosContainerRef.current && searched) {
+      renderizarListaObras(
+        resultadosContainerRef.current,
+        resultados,
+        obras,
+        adicionarNaBiblioteca
+      );
+    }
+  }, [resultados, obras, searched, activeTab, adicionarNaBiblioteca]);
+
+  useEffect(() => {
+    if (activeTab === "livro") return; // Livros usam React
+    
+    if (tendenciasContainerRef.current && !searched && !loadingTrending) {
+      renderizarListaObras(
+        tendenciasContainerRef.current,
+        tendencias,
+        obras,
+        adicionarNaBiblioteca
+      );
+    }
+  }, [tendencias, obras, searched, loadingTrending, activeTab, adicionarNaBiblioteca]);
+
+  const buscarObras = async () => {
+    if (!busca.trim()) {
+      toast.error("Digite algo para buscar");
+      return;
+    }
+
+    setLoading(true);
+    setSearched(true);
+    try {
+      if (activeTab === "livro") {
+        const response = await fetch(
+          `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(busca)}&maxResults=20&langRestrict=pt`
+        );
+        const data = await response.json();
+
+        if (data.items) {
+          setResultados(data.items.map((item: any) => ({
+            id: item.id,
+            apiId: item.id,
+            title: item.volumeInfo.title,
+            type: "livro" as TipoObra,
+            description: item.volumeInfo.description,
+            image: item.volumeInfo.imageLinks?.thumbnail?.replace("http:", "https:"),
+            releaseDate: item.volumeInfo.publishedDate,
+            rating: item.volumeInfo.averageRating,
+            genres: item.volumeInfo.categories,
+          })));
+        } else {
+          setResultados([]);
+          toast.info("Nenhum resultado encontrado");
+        }
+      } else {
+        const endpoint = activeTab === "filme" ? "movie" : "tv";
+        const response = await fetch(
+          `${TMDB_BASE_URL}/search/${endpoint}?api_key=${TMDB_API_KEY}&language=pt-BR&query=${encodeURIComponent(busca)}`
+        );
+        const data = await response.json();
+
+        if (data.results && data.results.length > 0) {
+          setResultados(data.results.map((item: any) => ({
+            id: item.id.toString(),
+            apiId: item.id.toString(),
+            title: item.title || item.name,
+            type: activeTab,
+            description: item.overview,
+            image: item.poster_path ? `${TMDB_IMAGE_BASE}${item.poster_path}` : undefined,
+            releaseDate: item.release_date || item.first_air_date,
+            rating: item.vote_average,
+            genres: item.genre_ids,
+          })));
+        } else {
+          setResultados([]);
+          toast.info("Nenhum resultado encontrado");
+        }
+      }
+    } catch (error) {
+      toast.error("Erro ao buscar. Tente novamente.");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const getTabIcon = (tab: string) => {
-    switch (tab) {
-      case "filme": return <Film className="h-4 w-4" />;
-      case "serie": return <Tv className="h-4 w-4" />;
-      case "livro": return <BookOpen className="h-4 w-4" />;
-    }
+  const obraJaAdicionada = (apiId: string, tipo: TipoObra) => {
+    return obras.some(obra => obra.apiId === apiId && obra.tipo === tipo);
   };
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return null;
     try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("pt-BR", { year: "numeric" });
-    } catch {
       return dateString.substring(0, 4);
+    } catch {
+      return null;
     }
   };
 
-  const renderMediaCard = (media: MediaResult) => {
+  // Renderização React para livros
+  const renderMediaCardReact = (media: MediaResult) => {
     const jaAdicionada = obraJaAdicionada(media.apiId, media.type);
     
     return (
@@ -233,7 +452,7 @@ const Explorar = () => {
             </div>
           ) : (
             <div className="h-56 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-              {getTabIcon(media.type)}
+              <BookOpen className="h-12 w-12 text-muted-foreground" />
             </div>
           )}
         </CardHeader>
@@ -301,6 +520,11 @@ const Explorar = () => {
           <p className="text-muted-foreground">
             Descubra filmes, séries e livros para adicionar à sua biblioteca
           </p>
+          {activeTab !== "livro" && (
+            <p className="text-xs text-muted-foreground/60 mt-1">
+              📌 Filmes e Séries renderizados com JavaScript puro (DOM manipulation)
+            </p>
+          )}
         </div>
 
         <Tabs value={activeTab} onValueChange={(v) => { 
@@ -360,12 +584,24 @@ const Explorar = () => {
               <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">Nenhum resultado encontrado</p>
             </div>
-          ) : resultados.length > 0 ? (
+          ) : searched && resultados.length > 0 ? (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Resultados da busca</h2>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {resultados.map(renderMediaCard)}
-              </div>
+              
+              {/* Container DOM puro para filmes/séries */}
+              {activeTab !== "livro" ? (
+                <div
+                  ref={resultadosContainerRef}
+                  id="resultados-container"
+                  className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                >
+                  {/* Cards são inseridos via JavaScript puro */}
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {resultados.map(renderMediaCardReact)}
+                </div>
+              )}
             </div>
           ) : null}
 
@@ -384,9 +620,22 @@ const Explorar = () => {
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : tendencias.length > 0 ? (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {tendencias.map(renderMediaCard)}
-                </div>
+                <>
+                  {/* Container DOM puro para filmes/séries */}
+                  {activeTab !== "livro" ? (
+                    <div
+                      ref={tendenciasContainerRef}
+                      id="tendencias-container"
+                      className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                    >
+                      {/* Cards são inseridos via JavaScript puro */}
+                    </div>
+                  ) : (
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                      {tendencias.map(renderMediaCardReact)}
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="text-center py-12">
                   <p className="text-muted-foreground">
