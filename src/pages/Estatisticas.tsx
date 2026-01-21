@@ -4,6 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useObras } from "@/contexts/ObrasContext";
 import { BookOpen, Film, Tv, Heart, BookMarked } from "lucide-react";
 
+// Cores pastéis para os gêneros (compartilhadas entre gráfico e lista)
+const GENRE_COLORS = [
+  "hsl(270, 50%, 75%)", // lilac
+  "hsl(215, 70%, 85%)", // blue
+  "hsl(350, 100%, 90%)", // pink
+  "hsl(35, 100%, 85%)", // cream
+  "hsl(140, 50%, 80%)", // green
+];
+
 const Estatisticas = () => {
   const { obras } = useObras();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -42,13 +51,7 @@ const Estatisticas = () => {
     const radius = 150;
 
     // Cores pastéis
-    const colors = [
-      "hsl(270, 50%, 75%)", // lilac
-      "hsl(215, 70%, 85%)", // blue
-      "hsl(350, 100%, 90%)", // pink
-      "hsl(35, 100%, 85%)", // cream
-      "hsl(140, 50%, 80%)", // green
-    ];
+    const colors = GENRE_COLORS;
 
     const total = generosOrdenados.reduce((sum, [, count]) => sum + count, 0);
     let currentAngle = -Math.PI / 2;
@@ -141,16 +144,23 @@ const Estatisticas = () => {
                   {generosOrdenados.map(([genero, count], index) => (
                     <div key={genero} className="space-y-2">
                       <div className="flex justify-between items-center">
-                        <span className="font-medium">
-                          {index + 1}. {genero}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-3 h-3 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: GENRE_COLORS[index % GENRE_COLORS.length] }}
+                          />
+                          <span className="font-medium">
+                            {index + 1}. {genero}
+                          </span>
+                        </div>
                         <span className="text-muted-foreground">{count} obras</span>
                       </div>
                       <div className="w-full bg-muted rounded-full h-2">
                         <div
-                          className="bg-primary rounded-full h-2 transition-smooth"
+                          className="rounded-full h-2 transition-smooth"
                           style={{
                             width: `${(count / obras.length) * 100}%`,
+                            backgroundColor: GENRE_COLORS[index % GENRE_COLORS.length],
                           }}
                         />
                       </div>
