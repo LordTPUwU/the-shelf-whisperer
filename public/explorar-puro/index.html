@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Explorar Obras - JavaScript Puro</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="header">
+    <h1>📚 Explorar Obras</h1>
+    <p>Demonstração de manipulação do DOM com JavaScript puro</p>
+  </header>
+
+  <main class="main-container">
+    <!-- Seção de busca -->
+    <section class="search-section">
+      <input 
+        type="text" 
+        id="search-input" 
+        placeholder="Buscar obras pelo título..."
+      >
+      <div class="filter-buttons">
+        <button class="filter-btn active" data-tipo="todos">Todos</button>
+        <button class="filter-btn" data-tipo="filme">Filmes</button>
+        <button class="filter-btn" data-tipo="serie">Séries</button>
+        <button class="filter-btn" data-tipo="livro">Livros</button>
+      </div>
+    </section>
+
+    <!-- Container vazio para obras disponíveis - será preenchido via JS -->
+    <section class="section">
+      <h2>🔥 Obras Disponíveis</h2>
+      <div id="explore-container"></div>
+    </section>
+
+    <!-- Container vazio para biblioteca do usuário - será preenchido via JS -->
+    <section class="section">
+      <h2>📖 Minha Biblioteca <span id="biblioteca-count">(0)</span></h2>
+      <div id="biblioteca-container"></div>
+      <p id="biblioteca-empty" class="empty-message">Sua biblioteca está vazia. Adicione obras acima!</p>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Projeto Acadêmico - Manipulação do DOM com JavaScript Puro</p>
+  </footer>
+
+  <!-- JavaScript puro - carregado no final do body -->
+  <script src="app.js"></script>
+</body>
+</html>
